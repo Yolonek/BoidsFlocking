@@ -24,15 +24,18 @@ class OsloModelNumba:
         self.size_array = np.zeros(grains, dtype=nb.int32)
         self.critical_value_options = np.array(threshold, dtype=nb.int8)
 
+    def get_current_grid(self) -> nb.int8[:]:
+        return self.grid
+
     def reset_parameters(self) -> None:
         self.grid = np.zeros(self.L, dtype=nb.int8)
         self.step = 0
         self.size_array = np.zeros(self.grains, dtype=nb.int32)
 
-    def _increment_top_left(self) -> None:
+    def increment_top_left(self) -> None:
         self.grid[0] += 1
 
-    def _increment_randomly(self) -> None:
+    def increment_randomly(self) -> None:
         self.grid[np.random.choice(self.L)] += 1
 
     def single_relaxation(self, thresholds: nb.int8) -> nb.int32:
@@ -44,7 +47,7 @@ class OsloModelNumba:
                     self.grid[index] -= 2
                     self.grid[index + 1] += 1
                     self.grid[index - 1] += 1
-                elif site == 0:
+                elif index == 0:
                     self.grid[index] -= 2
                     self.grid[index + 1] += 1
                 else:
@@ -68,9 +71,9 @@ class OsloModelNumba:
         self.reset_parameters()
         for _ in range(self.grains):
             if random_increment:
-                self._increment_randomly()
+                self.increment_randomly()
             else:
-                self._increment_top_left()
+                self.increment_top_left()
             self.system_relaxation()
 
     def get_plot_data(self) -> tuple[nb.int32[:], nb.int32[:]]:
