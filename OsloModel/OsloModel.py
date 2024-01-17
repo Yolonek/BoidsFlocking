@@ -3,16 +3,23 @@ from matplotlib import pyplot as plt
 
 
 class OsloModel:
-    def __init__(self, L=10, grains=10, threshold=(1, 2)):
+    def __init__(self, L=10, grains=10, threshold=(1, 2), left_wall_closed=False):
         self.L = L
         self.grid = np.zeros(self.L, dtype=np.int8)
         self.step = 0
         self.grains = grains
         self.size_array = np.zeros(grains, dtype=np.int32)
         self.critical_value_options = np.array(threshold, dtype=np.int8)
+        self.left_wall_closed = left_wall_closed
+
+    def change_boundary_condition(self, is_closed):
+        self.left_wall_closed = is_closed
 
     def get_current_grid(self):
         return self.grid
+
+    def get_plot_data(self):
+        return np.arange(1, self.grains), self.size_array
 
     def reset_parameters(self):
         self.grid = np.zeros(self.L, dtype=np.int8)
@@ -35,7 +42,7 @@ class OsloModel:
                     self.grid[index + 1] += 1
                     self.grid[index - 1] += 1
                 elif index == 0:
-                    self.grid[index] -= 2
+                    self.grid[index] -= 1 if self.left_wall_closed else 2
                     self.grid[index + 1] += 1
                 else:
                     self.grid[index] -= 2
@@ -43,9 +50,7 @@ class OsloModel:
         return size
 
     def system_relaxation(self):
-        # print(f'options {self.critical_value_options}')
         thresholds = np.random.choice(self.critical_value_options, size=self.L).astype(np.int8)
-        # print(f'thres {thresholds}')
         avalanche_total_size = 0
         while True:
             avalanche_size = self.single_relaxation(thresholds)
@@ -65,21 +70,26 @@ class OsloModel:
                 self.increment_top_left()
             self.system_relaxation()
 
-    def get_plot_data(self):
-        return np.arange(1, self.grains), self.size_array
+    def calculate_avalanche_probabilities(self, bins, density):
+        steps, avalanche = self.get_plot_data()
+        avalanche_count, avalanche_bins = np.histogram(avalanche, bins=bins, density=density)
+        avalanche_bins = np.array([0.5 * (avalanche_bins[i] + avalanche_bins[i + 1]) for i in range(len(avalanche_count))])
+        print(avalanche_count.dtype, avalanche_bins.dtype)
+        print(len(avalanche_count), len(avalanche_bins))
+        return avalanche_bins, avalanche_count
 
 
 if __name__ == '__main__':
-    L = 10
-    grains = 10
+    L = 50
+    grains = 100
     is_random = False
-    model = OsloModel(L=L, grains=grains, threshold=tuple([1, 2]))
-    print(model.get_current_grid())
-    for _ in range(grains):
-        if is_random:
-            model.increment_randomly()
-        else:
-            model.increment_top_left()
-        print(f'bef {model.grid}')
-        model.system_relaxation()
-        print(f'aft {model.grid}')
+    model = OsloModel(L=L, grains=grains, threshold=tuple([1, 2]), left_wall_closed=True)
+    model.add_all_grains(random_increment=is_random)
+    print(model.size_array)
+    a = model.calculate_avalanche_probabilities(10, False)
+    b = model.calculate_avalanche_probabilities(10, True)
+    print(a[1] / a[1].sum())
+    print(b[1])
+    print(b[1].sum())
+
+
