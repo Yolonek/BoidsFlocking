@@ -30,9 +30,11 @@ def simulate_time_evolution(L, grains, is_randomly_incremented, threshold=tuple(
     return grid, steps, avalanche
 
 
-def plot_time_evolution(L, steps, grid, axes=None, cmap='ocean'):
+def plot_time_evolution(L, steps, grid, axes=None):
     if axes:
-        vmax, vmin = 1, 0
+        colors, quality = ['#000000', '#000000', '#ffc130', '#941100'], 4
+        cmap = LinearSegmentedColormap.from_list('', colors, N=quality)
+        vmax, vmin = grid.max(), grid.min()
         axes.pcolormesh(np.arange(0, steps + 0.5, 0.5), np.arange(L), grid[::-1, :],
                         cmap=cmap, vmin=vmin, vmax=vmax)
         axes.set(xlabel='time', yticks=[])
