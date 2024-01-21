@@ -68,7 +68,9 @@ class Flock:
                  avoid_range: int = 10,
                  avoid_factor: float = 0.05,
                  align_range: int = 50,
-                 align_factor: float = 0.05):
+                 align_factor: float = 0.05,
+                 cohesion_range: int = 50,
+                 cohesion_factor: float = 0.05):
         self.number_of_boids = number_of_boids
         self.boids = []
         self.boid_scale = scale
@@ -82,6 +84,8 @@ class Flock:
         self.avoid_factor = avoid_factor
         self.align_range = align_range
         self.align_factor = align_factor
+        self.cohesion_range = cohesion_range
+        self.cohesion_factor = cohesion_factor
         if coordinates is not None:
             self.place_boids_from_list(coordinates)
         else:
@@ -110,41 +114,54 @@ class Flock:
             boid.stop()
         self.speed_active = False
 
-    def update_boid_parameter(self,
-                              check_boundaries: bool,
-                              separation_active: bool,
-                              alignment_active: bool):
+    def update_boid_velocity(self,
+                             check_boundaries: bool,
+                             separation_active: bool,
+                             alignment_active: bool,
+                             cohesion_active: bool):
         for boid in self.boids:
             if check_boundaries:
                 boid.check_boundaries(self.WIDTH, self.HEIGHT)
-            if any([separation_active, alignment_active]):
+            if any([separation_active, alignment_active, cohesion_active]):
                 close_dx, close_dy = 0, 0
-                xvel_avg, yvel_avg, neighboring_boids = 0, 0, 0
+                xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
+                xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
                 for other in self.boids:
-                    if separation_active and other != boid:
-                        boid_x, boid_y = boid.body.position
-                        if distance.euclidean(boid.body.position, other.body.position) < self.avoid_range:
+                    if other != boid:
+                        boid_distance = distance.euclidean(boid.body.position, other.body.position)
+                        if separation_active and boid_distance < self.avoid_range:
+                            boid_x, boid_y = boid.body.position
                             close_dx += boid_x - other.body.position[0]
                             close_dy += boid_y - other.body.position[1]
 
-                    if alignment_active and other != boid:
-                        if distance.euclidean(boid.body.position, other.body.position) < self.align_range:
-                            xvel_avg += other.body.position[0]
-                            yvel_avg += other.body.position[1]
-                            neighboring_boids += 1
+                        if alignment_active and boid_distance < self.align_range:
+                            xvel_avg += other.body.velocity[0]
+                            yvel_avg += other.body.velocity[1]
+                            neighboring_boids_align += 1
 
-                separation_vx = close_dx * self.avoid_factor
-                separation_vy = close_dy * self.avoid_factor
+                        if cohesion_active and boid_distance < self.cohesion_range:
+                            xpos_avg += other.body.position[0]
+                            ypos_avg += other.body.position[1]
+                            neighboring_boids_cohesion += 1
 
-                if neighboring_boids > 0:
-                    alignment_vx = ((xvel_avg / neighboring_boids) - boid.body.position[0]) * self.align_factor
-                    alignment_vy = ((yvel_avg / neighboring_boids) - boid.body.position[1]) * self.align_factor
-                else:
-                    alignment_vx, alignment_vy = 0, 0
+                separation_vx, separation_vy = 0, 0
+                if separation_active:
+                    separation_vx = close_dx * self.avoid_factor
+                    separation_vy = close_dy * self.avoid_factor
+
+                alignment_vx, alignment_vy = 0, 0
+                if neighboring_boids_align > 0 and alignment_active:
+                    alignment_vx = ((xvel_avg / neighboring_boids_align) - boid.body.velocity[0]) * self.align_factor
+                    alignment_vy = ((yvel_avg / neighboring_boids_align) - boid.body.velocity[1]) * self.align_factor
+
+                cohesion_vx, cohesion_vy = 0, 0
+                if neighboring_boids_cohesion > 0 and cohesion_active:
+                    cohesion_vx = ((xpos_avg / neighboring_boids_cohesion) - boid.body.position[0]) * self.cohesion_factor
+                    cohesion_vy = ((ypos_avg / neighboring_boids_cohesion) - boid.body.position[1]) * self.cohesion_factor
 
                 boid.change_velocity(
-                    boid.body.velocity[0] + separation_vx + alignment_vx,
-                    boid.body.velocity[1] + separation_vy + alignment_vy,
+                    boid.body.velocity[0] + separation_vx + alignment_vx + cohesion_vx,
+                    boid.body.velocity[1] + separation_vy + alignment_vy + cohesion_vy,
                     self.speed_max, self.speed_min
                 )
 

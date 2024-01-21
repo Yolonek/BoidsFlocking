@@ -11,22 +11,24 @@ def main():
     WIDTH, HEIGHT = 1920, 1080
     window = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
-    fps = 60
+    fps = 30
     dt = 1 / fps
 
-    velocity_scale = 100
+    velocity_scale = 200
     body_scale = 4
 
     space = pymunk.Space()
 
-    number_of_bodies = 30
+    number_of_bodies = 100
     flock = Flock(number_of_bodies, body_scale, space,
                   space_coordinates=(WIDTH, HEIGHT),
                   speed_scale=velocity_scale,
                   avoid_range=30,
                   avoid_factor=0.5,
                   align_range=100,
-                  align_factor=0.3)
+                  align_factor=0.005,
+                  cohesion_range=200,
+                  cohesion_factor=0.5)
 
     draw_options = pymunk.pygame_util.DrawOptions(window)
 
@@ -44,8 +46,9 @@ def main():
         if flock.speed_active:
             flock.update_boid_velocity(
                 check_boundaries=True,
-                separation_active=True,
-                alignment_active=True
+                separation_active=False,
+                alignment_active=False,
+                cohesion_active=True
             )
 
         window.fill((11, 11, 11))
