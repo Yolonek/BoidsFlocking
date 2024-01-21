@@ -2,40 +2,12 @@ import sys
 import pygame
 import pymunk
 import pymunk.pygame_util
-from pymunk import Vec2d
-import math
-import numpy as np
-
-
-def create_triangle(position, angle, scale=1):
-    triangle_vertices = [(0, 2 * scale), (0, -2 * scale), (6 * scale, 0)]
-    triangle_body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
-    triangle_body.position = position
-    triangle_body.velocity = (0, 0)
-    triangle_body.angle = angle
-    triangle_shape = pymunk.Poly(triangle_body, triangle_vertices)
-    return triangle_body, triangle_shape
-
-
-def accelerate_body(body: pymunk.Body, scale: int) -> None:
-    angle = body.angle
-    x_velocity, y_velocity = math.cos(angle), math.sin(angle)
-    body.velocity = Vec2d(x_velocity, y_velocity).normalized() * scale
-
-
-def stop_body(body: pymunk.Body) -> None:
-    body.velocity = Vec2d(0, 0)
-
-
-def check_distance(main_body, other_body, separation_distance=10):
-    close_dx = 0
+from Flock import Flock
 
 
 def main():
     running = True
     pygame.init()
-
-    # WIDTH, HEIGHT = 800, 800
     WIDTH, HEIGHT = 1920, 1080
     window = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
@@ -47,17 +19,15 @@ def main():
 
     space = pymunk.Space()
 
-    number_of_bodies = 500
-    triangles = []
-    for _ in range(number_of_bodies):
-        triangle, shape = create_triangle(((np.random.randint(WIDTH)), np.random.randint(HEIGHT)),
-                                          np.random.random() * 2 * np.pi, scale=body_scale)
-        space.add(triangle, shape)
-        triangles.append(triangle)
+    number_of_bodies = 50
+    flock = Flock(number_of_bodies, body_scale, space,
+                  space_coordinates=(WIDTH, HEIGHT),
+                  average_speed=velocity_scale,
+                  protected_range=100,
+                  avoid_factor=0.5)
 
     draw_options = pymunk.pygame_util.DrawOptions(window)
 
-    speed_active = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -65,23 +35,15 @@ def main():
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 running = False
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                if speed_active:
-                    for body in triangles:
-                        stop_body(body)
-                        speed_active = False
+                if flock.speed_active:
+                    flock.stop_boids()
                 else:
-                    for body in triangles:
-                        accelerate_body(body, velocity_scale)
-                        speed_active = True
-        for body in triangles:
-            if body.position[0] >= WIDTH:
-                body.position = (0, body.position[1])
-            elif body.position[0] <= 0:
-                body.position = (WIDTH, body.position[1])
-            if body.position[1] >= HEIGHT:
-                body.position = (body.position[0], 0)
-            elif body.position[1] <= 0:
-                body.position = (body.position[0], HEIGHT)
+                    flock.accelerate_boids()
+        if flock.speed_active:
+            flock.update_boid_parameter(
+                check_boundaries=True,
+                separation_active=True
+            )
 
         window.fill((11, 11, 11))
         space.debug_draw(draw_options)
