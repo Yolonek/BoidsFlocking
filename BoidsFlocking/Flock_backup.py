@@ -48,29 +48,15 @@ class Boid:
         self.speed = abs(self.body.velocity)
         self.body.velocity = Vec2d(0, 0)
 
-    def check_boundaries(self, WIDTH: int, HEIGHT: int,
-                         cyclic_horizontal: bool = True, cyclic_vertical: bool = True):
-        if cyclic_horizontal:
-            if self.body.position[0] >= WIDTH:
-                self.body.position = (0, self.body.position[1])
-            elif self.body.position[0] <= 0:
-                self.body.position = (WIDTH, self.body.position[1])
-        else:
-            if self.body.position[0] > WIDTH:
-                self.body.position = (WIDTH, self.body.position[1])
-            elif self.body.position[0] < 0:
-                self.body.position = (0, self.body.position[1])
-
-        if cyclic_vertical:
-            if self.body.position[1] >= HEIGHT:
-                self.body.position = (self.body.position[0], 0)
-            elif self.body.position[1] <= 0:
-                self.body.position = (self.body.position[0], HEIGHT)
-        else:
-            if self.body.position[1] > HEIGHT:
-                self.body.position = (self.body.position[0], HEIGHT)
-            elif self.body.position[1] < 0:
-                self.body.position = (self.body.position[0], 0)
+    def check_boundaries(self, WIDTH: int, HEIGHT: int):
+        if self.body.position[0] >= WIDTH:
+            self.body.position = (0, self.body.position[1])
+        elif self.body.position[0] <= 0:
+            self.body.position = (WIDTH, self.body.position[1])
+        if self.body.position[1] >= HEIGHT:
+            self.body.position = (self.body.position[0], 0)
+        elif self.body.position[1] <= 0:
+            self.body.position = (self.body.position[0], HEIGHT)
 
 
 class Flock:
@@ -85,9 +71,7 @@ class Flock:
                  align_range: int = 50,
                  align_factor: float = 0.05,
                  cohesion_range: int = 50,
-                 cohesion_factor: float = 0.05,
-                 turn_margin: int = 50,
-                 turn_factor: int = 1):
+                 cohesion_factor: float = 0.05):
         self.number_of_boids = number_of_boids
         self.boids = []
         self.boid_scale = scale
@@ -103,8 +87,6 @@ class Flock:
         self.align_factor = align_factor
         self.cohesion_range = cohesion_range
         self.cohesion_factor = cohesion_factor
-        self.turn_margin = turn_margin
-        self.turn_factor = turn_factor
         if coordinates is not None:
             self.place_boids_from_list(coordinates)
         else:
@@ -135,31 +117,23 @@ class Flock:
 
     def update_boid_velocity(self,
                              check_boundaries: bool,
-                             horizontal_cyclic_boundary: bool,
-                             vertical_cyclic_boundary: bool,
                              separation_active: bool,
                              alignment_active: bool,
-                             cohesion_active: bool,
-                             vertical_wall_active: bool,
-                             horizontal_wall_active: bool):
+                             cohesion_active: bool):
         for boid in self.boids:
             if check_boundaries:
-                boid.check_boundaries(self.WIDTH, self.HEIGHT,
-                                      cyclic_horizontal=horizontal_cyclic_boundary,
-                                      cyclic_vertical=vertical_cyclic_boundary)
-            if any([separation_active, alignment_active, cohesion_active, vertical_wall_active, horizontal_wall_active]):
+                boid.check_boundaries(self.WIDTH, self.HEIGHT)
+            if any([separation_active, alignment_active, cohesion_active]):
                 close_dx, close_dy = 0, 0
                 xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
                 xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
-                boid_x, boid_y = boid.body.position
                 for other in self.boids:
                     if other != boid:
-                        other_x, other_y = other.body.position
                         boid_distance = distance.euclidean(boid.body.position, other.body.position)
                         if separation_active and boid_distance < self.avoid_range:
-                            # boid_x, boid_y = boid.body.position
-                            close_dx += boid_x - other_x
-                            close_dy += boid_y - other_y
+                            boid_x, boid_y = boid.body.position
+                            close_dx += boid_x - other.body.position[0]
+                            close_dy += boid_y - other.body.position[1]
 
                         if alignment_active and boid_distance < self.align_range:
                             xvel_avg += other.body.velocity[0]
@@ -167,8 +141,8 @@ class Flock:
                             neighboring_boids_align += 1
 
                         if cohesion_active and boid_distance < self.cohesion_range:
-                            xpos_avg += other_x
-                            ypos_avg += other_y
+                            xpos_avg += other.body.position[0]
+                            ypos_avg += other.body.position[1]
                             neighboring_boids_cohesion += 1
 
                 separation_vx, separation_vy = 0, 0
@@ -183,51 +157,15 @@ class Flock:
 
                 cohesion_vx, cohesion_vy = 0, 0
                 if neighboring_boids_cohesion > 0 and cohesion_active:
-                    cohesion_vx = ((xpos_avg / neighboring_boids_cohesion) - boid_x) * self.cohesion_factor
-                    cohesion_vy = ((ypos_avg / neighboring_boids_cohesion) - boid_y) * self.cohesion_factor
-
-                wall_vx = 0
-                if horizontal_wall_active:
-                    if boid_x < self.turn_margin:
-                        wall_vx = self.turn_factor
-                    elif boid_x > self.WIDTH - self.turn_margin:
-                        wall_vx = -self.turn_factor
-
-                wall_vy = 0
-                if vertical_wall_active:
-                    if boid_y < self.turn_margin:
-                        wall_vy = self.turn_factor
-                    elif boid_y > self.HEIGHT - self.turn_margin:
-                        wall_vy = -self.turn_factor
+                    cohesion_vx = ((xpos_avg / neighboring_boids_cohesion) - boid.body.position[0]) * self.cohesion_factor
+                    cohesion_vy = ((ypos_avg / neighboring_boids_cohesion) - boid.body.position[1]) * self.cohesion_factor
 
                 boid.change_velocity(
-                    boid.body.velocity[0] + separation_vx + alignment_vx + cohesion_vx + wall_vx,
-                    boid.body.velocity[1] + separation_vy + alignment_vy + cohesion_vy + wall_vy,
+                    boid.body.velocity[0] + separation_vx + alignment_vx + cohesion_vx,
+                    boid.body.velocity[1] + separation_vy + alignment_vy + cohesion_vy,
                     self.speed_max, self.speed_min
                 )
 
-#
-# def update_velocity_flock(flock, width, height, check_boundaries, separation_active, alignment_active, cohesion_active,
-#                           avoid_range, avoid_factor, align_range, align_factor, cohesion_range, cohesion_factor):
-#     for boid in flock:
-#         if any([separation_active, alignment_active, cohesion_active]):
-#             close_dx, xlose_dy = 0, 0
-#             xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
-#             xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
-#             for other in flock:
-#                 if other != boid:
-#                     boid_distance = np.sqrt(((boid[0] - other[0]) ** 2) + ((boid[1] - other[1]) ** 2))
 
 if __name__ == '__main__':
-    a, b, c = 10, 11, 10
-    print(id(a), id(b), id(c))
-    d = [a, b, c]
-    print(id(d[0]), id(d[1]), id(d[2]))
-    for i in d:
-        print(id(i))
-        print(id(i) is id(d[2]))
-
-
-
-
-
+    pass
