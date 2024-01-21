@@ -25,18 +25,26 @@ class Boid:
         self.body.angle = angle
         self.shape = pymunk.Poly(self.body, triangle_vertices)
 
-    def change_speed(self, speed: int):
-        self.speed = speed
-
-    def change_velocity(self, vx: float, vy: float):
+    def change_velocity(self, vx: float, vy: float, vmax: int, vmin: int):
         self.body.angle = np.arctan2(-vx, vy) + np.pi / 2
-        self.body.velocity = Vec2d(vx, vy).normalized() * self.speed
+        velocity = Vec2d(vx, vy)
+        speed = abs(velocity)
+        if speed >= vmax:
+            self.body.velocity = velocity.normalized() * vmax
+            self.speed = vmax
+        elif speed < vmin:
+            self.body.velocity = velocity.normalized() * vmin
+            self.speed = vmin
+        else:
+            self.body.velocity = velocity
+            self.speed = speed
 
     def accelerate(self):
         x_velocity, y_velocity = np.cos(self.body.angle), np.sin(self.body.angle)
-        self.body.velocity = Vec2d(x_velocity, y_velocity).normalized() * self.speed
+        self.body.velocity = Vec2d(x_velocity, y_velocity) * self.speed
 
     def stop(self):
+        self.speed = abs(self.body.velocity)
         self.body.velocity = Vec2d(0, 0)
 
     def check_boundaries(self, WIDTH: int, HEIGHT: int):
@@ -55,9 +63,12 @@ class Flock:
                  space: pymunk.Space,
                  space_coordinates: tuple[int, int],
                  coordinates: tuple[int, int] = None,
-                 average_speed: int = 1,
-                 protected_range: int = 10,
-                 avoid_factor: float = 0.05):
+                 speed_range: tuple[int, int] = (1, 3),
+                 speed_scale: int = 100,
+                 avoid_range: int = 10,
+                 avoid_factor: float = 0.05,
+                 align_range: int = 50,
+                 align_factor: float = 0.05):
         self.number_of_boids = number_of_boids
         self.boids = []
         self.boid_scale = scale
@@ -65,9 +76,12 @@ class Flock:
         self.HEIGHT = space_coordinates[1]
         self.space = space
         self.speed_active = False
-        self.average_speed = average_speed
-        self.protected_range = protected_range
+        self.speed_min, self.speed_max = Vec2d(*speed_range) * speed_scale
+        self.speed_scale = speed_scale
+        self.avoid_range = avoid_range
         self.avoid_factor = avoid_factor
+        self.align_range = align_range
+        self.align_factor = align_factor
         if coordinates is not None:
             self.place_boids_from_list(coordinates)
         else:
@@ -79,7 +93,7 @@ class Flock:
                          np.random.randint(self.HEIGHT)),
                         np.random.random() * 2 * np.pi,
                         scale=self.boid_scale,
-                        speed=self.average_speed)
+                        speed=self.speed_scale)
             self.space.add(boid.body, boid.shape)
             self.boids.append(boid)
 
@@ -103,21 +117,36 @@ class Flock:
         for boid in self.boids:
             if check_boundaries:
                 boid.check_boundaries(self.WIDTH, self.HEIGHT)
-            if separation_active:
-                close_dx = 0
-                close_dy = 0
+            if any([separation_active, alignment_active]):
+                close_dx, close_dy = 0, 0
+                xvel_avg, yvel_avg, neighboring_boids = 0, 0, 0
                 for other in self.boids:
-                    if other != boid:
+                    if separation_active and other != boid:
                         boid_x, boid_y = boid.body.position
-                        if distance.euclidean(boid.body.position, other.body.position) < self.protected_range:
+                        if distance.euclidean(boid.body.position, other.body.position) < self.avoid_range:
                             close_dx += boid_x - other.body.position[0]
                             close_dy += boid_y - other.body.position[1]
+
+                    if alignment_active and other != boid:
+                        if distance.euclidean(boid.body.position, other.body.position) < self.align_range:
+                            xvel_avg += other.body.position[0]
+                            yvel_avg += other.body.position[1]
+                            neighboring_boids += 1
+
+                separation_vx = close_dx * self.avoid_factor
+                separation_vy = close_dy * self.avoid_factor
+
+                if neighboring_boids > 0:
+                    alignment_vx = ((xvel_avg / neighboring_boids) - boid.body.position[0]) * self.align_factor
+                    alignment_vy = ((yvel_avg / neighboring_boids) - boid.body.position[1]) * self.align_factor
+                else:
+                    alignment_vx, alignment_vy = 0, 0
+
                 boid.change_velocity(
-                    boid.body.velocity[0] + (close_dx * self.avoid_factor),
-                    boid.body.velocity[1] + (close_dy * self.avoid_factor)
+                    boid.body.velocity[0] + separation_vx + alignment_vx,
+                    boid.body.velocity[1] + separation_vy + alignment_vy,
+                    self.speed_max, self.speed_min
                 )
-            if alignment_active:
-                pass
 
 
 if __name__ == '__main__':
