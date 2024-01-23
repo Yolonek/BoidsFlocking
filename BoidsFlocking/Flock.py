@@ -131,6 +131,12 @@ class Flock:
                              np.random.random() * 2 * np.pi,
                              self.speed_active)
 
+    def convert_boid_to_tuples(self):
+        return [(*boid.body.position, *boid.body.velocity) for boid in self.boids]
+
+    # def convert_tuples_to_boids(self, velocities):
+    #     for boid in self.boids:
+    #         boid.body.
 
     def accelerate_boids(self):
         for boid in self.boids:
@@ -156,7 +162,8 @@ class Flock:
                 boid.check_boundaries(self.WIDTH, self.HEIGHT,
                                       cyclic_horizontal=horizontal_cyclic_boundary,
                                       cyclic_vertical=vertical_cyclic_boundary)
-            if any([separation_active, alignment_active, cohesion_active, vertical_wall_active, horizontal_wall_active]):
+            if any([separation_active, alignment_active, cohesion_active, vertical_wall_active,
+                    horizontal_wall_active]):
                 close_dx, close_dy = 0, 0
                 xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
                 xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
@@ -215,6 +222,31 @@ class Flock:
                     self.speed_max, self.speed_min
                 )
 
+    def update_boid_velocity_with_numba(self,
+                                        check_boundaries: bool,
+                                        horizontal_cyclic_boundary: bool,
+                                        vertical_cyclic_boundary: bool,
+                                        separation_active: bool,
+                                        alignment_active: bool,
+                                        cohesion_active: bool,
+                                        vertical_wall_active: bool,
+                                        horizontal_wall_active: bool):
+        boid_coordinates = self.convert_boid_to_tuples()
+        boid_velocities = update_boid_velocity_numba(boid_coordinates, self.WIDTH, self.HEIGHT,
+                                                     separation_active, alignment_active, cohesion_active,
+                                                     self.avoid_range, self.avoid_factor,
+                                                     self.align_range, self.align_factor,
+                                                     self.cohesion_range, self.cohesion_factor,
+                                                     horizontal_wall_active, vertical_wall_active,
+                                                     self.turn_margin, self.turn_factor)
+        for boid, velocity in zip(self.boids, boid_velocities):
+            if check_boundaries:
+                boid.check_boundaries(self.WIDTH, self.HEIGHT,
+                                      cyclic_horizontal=horizontal_cyclic_boundary,
+                                      cyclic_vertical=vertical_cyclic_boundary)
+            velocity_vx, velocity_vy = velocity
+            boid.change_velocity(velocity_vx, velocity_vy, self.speed_max, self.speed_min)
+
     def update_parameters(self, parameters: BoidFlockingParameters):
         self.boid_scale = parameters.boid
         self.speed_active = parameters.speed_active
@@ -229,28 +261,64 @@ class Flock:
         self.turn_margin = parameters.boundary_margin
         self.turn_factor = parameters.boundary_factor
 
-#
-# def update_velocity_flock(flock, width, height, check_boundaries, separation_active, alignment_active, cohesion_active,
-#                           avoid_range, avoid_factor, align_range, align_factor, cohesion_range, cohesion_factor):
-#     for boid in flock:
-#         if any([separation_active, alignment_active, cohesion_active]):
-#             close_dx, xlose_dy = 0, 0
-#             xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
-#             xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
-#             for other in flock:
-#                 if other != boid:
-#                     boid_distance = np.sqrt(((boid[0] - other[0]) ** 2) + ((boid[1] - other[1]) ** 2))
+
+@nb.njit(parallel=True)
+def update_boid_velocity_numba(flock, width, height, separation_active, alignment_active, cohesion_active,
+                               avoid_range, avoid_factor, align_range, align_factor, cohesion_range, cohesion_factor,
+                               horizontal_wall_active, vertical_wall_active, turn_margin, turn_factor):
+    boid_velocities = []
+    for boid in flock:
+        boid_vx, boid_vy = boid[2], boid[3]
+        if separation_active or alignment_active or cohesion_active or horizontal_wall_active or vertical_wall_active:
+            close_dx, close_dy = 0, 0
+            xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
+            xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
+            boid_x, boid_y = boid[0], boid[1]
+            for other in flock:
+                if other != boid:
+                    boid_distance = np.sqrt(((boid[0] - other[0]) ** 2) + ((boid[1] - other[1]) ** 2))
+                    other_x, other_y = other[0], other[1]
+                    other_vx, other_vy = other[2], other[3]
+                    if separation_active and boid_distance < avoid_range:
+                        close_dx += boid_x - other_x
+                        close_dy += boid_y - other_y
+                    if alignment_active and boid_distance < align_range:
+                        xvel_avg += other_vx
+                        yvel_avg += other_vy
+                        neighboring_boids_align += 1
+                    if cohesion_active and boid_distance < cohesion_range:
+                        xpos_avg += other_x
+                        ypos_avg += other_y
+                        neighboring_boids_cohesion += 1
+            separation_vx, separation_vy = 0, 0
+            if separation_active:
+                separation_vx = close_dx * avoid_factor
+                separation_vy = close_dy * avoid_factor
+            alignment_vx, alignment_vy = 0, 0
+            if neighboring_boids_align > 0 and alignment_active:
+                alignment_vx = ((xvel_avg / neighboring_boids_align) - boid_vx) * align_factor
+                alignment_vy = ((yvel_avg / neighboring_boids_align) - boid_vy) * align_factor
+            cohesion_vx, cohesion_vy = 0, 0
+            if neighboring_boids_cohesion > 0 and cohesion_active:
+                cohesion_vx = ((xpos_avg / neighboring_boids_cohesion) - boid_x) * cohesion_factor
+                cohesion_vy = ((ypos_avg / neighboring_boids_cohesion) - boid_y) * cohesion_factor
+            wall_vx = 0
+            if horizontal_wall_active:
+                if boid_x < turn_margin:
+                    wall_vx = turn_factor
+                elif boid_x > width - turn_margin:
+                    wall_vx = -turn_factor
+            wall_vy = 0
+            if vertical_wall_active:
+                if boid_y < turn_margin:
+                    wall_vy = turn_factor
+                elif boid_y > height - turn_margin:
+                    wall_vy = -turn_factor
+            boid_vx += separation_vx + alignment_vx + cohesion_vx + wall_vx
+            boid_vy += separation_vy + alignment_vy + cohesion_vy + wall_vy
+        boid_velocities.append((boid_vx, boid_vy))
+    return boid_velocities
+
 
 if __name__ == '__main__':
-    a, b, c = 10, 11, 10
-    print(id(a), id(b), id(c))
-    d = [a, b, c]
-    print(id(d[0]), id(d[1]), id(d[2]))
-    for i in d:
-        print(id(i))
-        print(id(i) is id(d[2]))
-
-
-
-
-
+    pass

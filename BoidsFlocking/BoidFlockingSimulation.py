@@ -15,6 +15,7 @@ def main():
     clock = pygame.time.Clock()
     fps = 30
     dt = 1 / fps
+    use_numba = True
 
     space = pymunk.Space()
     user_interface = UserInterface(window, WIDTH, HEIGHT, margin=50)
@@ -22,28 +23,28 @@ def main():
     # print(simulation_parameters)
 
     check_boundaries = True
-    horizontal_cyclic_boundary = True
-    vertical_cyclic_boundary = True
-    separation_active = False
-    alignment_active = False
-    cohesion_active = False
-    horizontal_wall_active = False
-    vertical_wall_active = False
+    horizontal_cyclic_boundary = False
+    vertical_cyclic_boundary = False
+    separation_active = True
+    alignment_active = True
+    cohesion_active = True
+    horizontal_wall_active = True
+    vertical_wall_active = True
 
-    number_of_bodies = 60
+    number_of_bodies = 1000
     flock = Flock(number_of_bodies, space,
                   space_coordinates=(WIDTH, HEIGHT),
-                  boid_size=4,
+                  boid_size=1,
                   speed_scale=200,
                   speed_range=(1, 2),
                   speed_active=False,
-                  avoid_range=50,
-                  avoid_factor=0.4,
+                  avoid_range=15,
+                  avoid_factor=0.8,
                   align_range=100,
                   align_factor=0.05,
                   cohesion_range=200,
                   cohesion_factor=0.02,
-                  turn_margin=200,
+                  turn_margin=100,
                   turn_factor=20)
 
     draw_options = pymunk.pygame_util.DrawOptions(window)
@@ -94,21 +95,36 @@ def main():
                 print(f'vertical_wall_active {vertical_wall_active}')
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 flock.reset_boids()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_n:
+                use_numba = False if use_numba else True
+                print(f'use numba {use_numba}')
 
         # if simulation_parameters != user_interface.get_parameters():
         #     simulation_parameters = user_interface.get_parameters()
         #     flock.update_parameters(simulation_parameters)
         if flock.speed_active:
-            flock.update_boid_velocity(
-                check_boundaries=check_boundaries,
-                horizontal_cyclic_boundary=horizontal_cyclic_boundary,
-                vertical_cyclic_boundary=vertical_cyclic_boundary,
-                separation_active=separation_active,
-                alignment_active=alignment_active,
-                cohesion_active=cohesion_active,
-                vertical_wall_active=vertical_wall_active,
-                horizontal_wall_active=horizontal_wall_active
-            )
+            if use_numba:
+                flock.update_boid_velocity_with_numba(
+                    check_boundaries=check_boundaries,
+                    horizontal_cyclic_boundary=horizontal_cyclic_boundary,
+                    vertical_cyclic_boundary=vertical_cyclic_boundary,
+                    separation_active=separation_active,
+                    alignment_active=alignment_active,
+                    cohesion_active=cohesion_active,
+                    vertical_wall_active=vertical_wall_active,
+                    horizontal_wall_active=horizontal_wall_active
+                )
+            else:
+                flock.update_boid_velocity(
+                    check_boundaries=check_boundaries,
+                    horizontal_cyclic_boundary=horizontal_cyclic_boundary,
+                    vertical_cyclic_boundary=vertical_cyclic_boundary,
+                    separation_active=separation_active,
+                    alignment_active=alignment_active,
+                    cohesion_active=cohesion_active,
+                    vertical_wall_active=vertical_wall_active,
+                    horizontal_wall_active=horizontal_wall_active
+                )
 
         # user_interface.parameter_changed()
         window.fill((11, 11, 11))
