@@ -4,6 +4,7 @@ import numpy as np
 import numba as nb
 from pymunk import Vec2d
 from scipy.spatial import distance
+from UserInterface import BoidFlockingParameters
 
 
 class Boid:
@@ -25,6 +26,12 @@ class Boid:
         self.body.position = position
         self.body.angle = angle
         self.shape = pymunk.Poly(self.body, triangle_vertices)
+
+    def change_boid(self, position: tuple[int, int], angle: float, speed_active: bool):
+        self.body.position = position
+        self.body.angle = angle
+        if speed_active:
+            self.accelerate()
 
     def change_velocity(self, vx: float, vy: float, vmax: int, vmin: int):
         self.body.angle = np.arctan2(-vx, vy) + np.pi / 2
@@ -74,12 +81,12 @@ class Boid:
 
 
 class Flock:
-    def __init__(self, number_of_boids: int, scale: float,
-                 space: pymunk.Space,
+    def __init__(self, number_of_boids: int, space: pymunk.Space,
                  space_coordinates: tuple[int, int],
-                 coordinates: tuple[int, int] = None,
+                 boid_size: int = 5,
                  speed_range: tuple[int, int] = (1, 3),
                  speed_scale: int = 100,
+                 speed_active: bool = False,
                  avoid_range: int = 10,
                  avoid_factor: float = 0.05,
                  align_range: int = 50,
@@ -90,11 +97,11 @@ class Flock:
                  turn_factor: int = 1):
         self.number_of_boids = number_of_boids
         self.boids = []
-        self.boid_scale = scale
+        self.boid_scale = boid_size
         self.WIDTH = space_coordinates[0]
         self.HEIGHT = space_coordinates[1]
         self.space = space
-        self.speed_active = False
+        self.speed_active = speed_active
         self.speed_min, self.speed_max = Vec2d(*speed_range) * speed_scale
         self.speed_scale = speed_scale
         self.avoid_range = avoid_range
@@ -105,10 +112,7 @@ class Flock:
         self.cohesion_factor = cohesion_factor
         self.turn_margin = turn_margin
         self.turn_factor = turn_factor
-        if coordinates is not None:
-            self.place_boids_from_list(coordinates)
-        else:
-            self.create_boids()
+        self.create_boids()
 
     def create_boids(self):
         for _ in range(self.number_of_boids):
@@ -120,8 +124,13 @@ class Flock:
             self.space.add(boid.body, boid.shape)
             self.boids.append(boid)
 
-    def place_boids_from_list(self, coordinates: tuple[int, int]):
-        pass
+    def reset_boids(self):
+        for boid in self.boids:
+            boid.change_boid((np.random.randint(self.WIDTH),
+                              np.random.randint(self.HEIGHT)),
+                             np.random.random() * 2 * np.pi,
+                             self.speed_active)
+
 
     def accelerate_boids(self):
         for boid in self.boids:
@@ -205,6 +214,20 @@ class Flock:
                     boid.body.velocity[1] + separation_vy + alignment_vy + cohesion_vy + wall_vy,
                     self.speed_max, self.speed_min
                 )
+
+    def update_parameters(self, parameters: BoidFlockingParameters):
+        self.boid_scale = parameters.boid
+        self.speed_active = parameters.speed_active
+        self.speed_scale = parameters.speed_scale
+        self.speed_min, self.speed_max = Vec2d(1, parameters.speed_range) * self.speed_scale
+        self.avoid_range = parameters.avoid_range
+        self.avoid_factor = parameters.avoid_factor
+        self.align_range = parameters.align_range
+        self.align_factor = parameters.align_factor
+        self.cohesion_range = parameters.cohesion_range
+        self.cohesion_factor = parameters.cohesion_factor
+        self.turn_margin = parameters.boundary_margin
+        self.turn_factor = parameters.boundary_factor
 
 #
 # def update_velocity_flock(flock, width, height, check_boundaries, separation_active, alignment_active, cohesion_active,

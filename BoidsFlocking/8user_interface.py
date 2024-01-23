@@ -16,27 +16,26 @@ def main():
     fps = 30
     dt = 1 / fps
 
-    velocity_scale = 200
-    body_scale = 5
-
-    user_interface = UserInterface(window, WIDTH, HEIGHT, margin=50)
-
     space = pymunk.Space()
+    user_interface = UserInterface(window, WIDTH, HEIGHT, margin=50)
+    simulation_parameters = user_interface.get_parameters()
+    # print(simulation_parameters)
 
-    number_of_bodies = 60
-    flock = Flock(number_of_bodies, body_scale, space,
+    number_of_bodies = 50
+    flock = Flock(number_of_bodies, space,
                   space_coordinates=(WIDTH, HEIGHT),
-                  speed_scale=velocity_scale,
-                  speed_range=(1, 3),
-                  avoid_range=30,
-                  avoid_factor=0.5,
-                  align_range=100,
-                  align_factor=0.005,
-                  cohesion_range=200,
-                  cohesion_factor=0.5,
-                  turn_margin=200,
-                  turn_factor=20)
-
+                  boid_size=simulation_parameters.boid,
+                  speed_scale=simulation_parameters.speed_scale,
+                  speed_range=(1, simulation_parameters.speed_range),
+                  speed_active=simulation_parameters.speed_active,
+                  avoid_range=simulation_parameters.avoid_range,
+                  avoid_factor=simulation_parameters.avoid_factor,
+                  align_range=simulation_parameters.align_range,
+                  align_factor=simulation_parameters.align_factor,
+                  cohesion_range=simulation_parameters.cohesion_range,
+                  cohesion_factor=simulation_parameters.cohesion_factor,
+                  turn_margin=simulation_parameters.boundary_margin,
+                  turn_factor=simulation_parameters.boundary_factor)
 
     draw_options = pymunk.pygame_util.DrawOptions(window)
 
@@ -55,21 +54,27 @@ def main():
                     user_interface.activate_menu()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 if flock.speed_active:
+                    simulation_parameters.speed_active = False
                     flock.stop_boids()
                 else:
+                    simulation_parameters.speed_active = True
                     flock.accelerate_boids()
+        if simulation_parameters != user_interface.get_parameters():
+            simulation_parameters = user_interface.get_parameters()
+            flock.update_parameters(simulation_parameters)
         if flock.speed_active:
             flock.update_boid_velocity(
-                check_boundaries=True,
-                horizontal_cyclic_boundary=True,
-                vertical_cyclic_boundary=True,
-                separation_active=False,
-                alignment_active=False,
-                cohesion_active=False,
-                vertical_wall_active=False,
-                horizontal_wall_active=False
+                check_boundaries=simulation_parameters.boundary_active,
+                horizontal_cyclic_boundary=simulation_parameters.cyclic_horizontal,
+                vertical_cyclic_boundary=simulation_parameters.cyclic_vertical,
+                separation_active=simulation_parameters.avoid_active,
+                alignment_active=simulation_parameters.align_active,
+                cohesion_active=simulation_parameters.cohesion_active,
+                vertical_wall_active=simulation_parameters.wall_vertical,
+                horizontal_wall_active=simulation_parameters.wall_horizontal
             )
-
+        
+        user_interface.parameter_changed()
         window.fill((11, 11, 11))
         space.debug_draw(draw_options)
         user_interface.update(events, mouse_rel)

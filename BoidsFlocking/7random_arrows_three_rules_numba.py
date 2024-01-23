@@ -19,8 +19,9 @@ def main():
 
     space = pymunk.Space()
 
-    number_of_bodies = 60
-    flock = Flock(number_of_bodies, body_scale, space,
+    number_of_bodies = 100
+    flock = Flock(number_of_bodies, space,
+                  boid_size=body_scale,
                   space_coordinates=(WIDTH, HEIGHT),
                   speed_scale=velocity_scale,
                   avoid_range=30,
