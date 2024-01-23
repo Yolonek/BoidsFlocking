@@ -8,14 +8,14 @@ from scipy.spatial import distance
 
 class Boid:
     def __init__(self, position: tuple[int, int], angle: float,
-                 scale: int = 1, speed: int = 1):
+                 scale: float = 1, speed: int = 1):
         self.body = None
         self.shape = None
         self.saved_speed = Vec2d(0, 0)
         self.speed = speed
         self.create(position, angle, scale)
 
-    def create(self, position: tuple[int, int], angle: float, scale: int):
+    def create(self, position: tuple[int, int], angle: float, scale: float):
         triangle_vertices = [
             (0, 2 * scale),
             (0, -2 * scale),
@@ -74,7 +74,7 @@ class Boid:
 
 
 class Flock:
-    def __init__(self, number_of_boids: int, scale: int,
+    def __init__(self, number_of_boids: int, scale: float,
                  space: pymunk.Space,
                  space_coordinates: tuple[int, int],
                  coordinates: tuple[int, int] = None,
