@@ -5,6 +5,9 @@ import numba as nb
 from pymunk import Vec2d
 from scipy.spatial import distance
 from UserInterface import BoidFlockingParameters
+from numba.core.errors import NumbaPendingDeprecationWarning
+import warnings
+warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 
 
 class Boid:
@@ -18,9 +21,9 @@ class Boid:
 
     def create(self, position: tuple[int, int], angle: float, scale: float):
         triangle_vertices = [
-            (0, 2 * scale),
-            (0, -2 * scale),
-            (6 * scale, 0)
+            (0, 1 * scale),
+            (0, -1 * scale),
+            (3 * scale, 0)
         ]
         self.body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
         self.body.position = position
@@ -262,21 +265,22 @@ class Flock:
         self.turn_factor = parameters.boundary_factor
 
 
-@nb.njit(parallel=True)
+@nb.njit()
 def update_boid_velocity_numba(flock, width, height, separation_active, alignment_active, cohesion_active,
                                avoid_range, avoid_factor, align_range, align_factor, cohesion_range, cohesion_factor,
                                horizontal_wall_active, vertical_wall_active, turn_margin, turn_factor):
+    flock_length = len(flock)
     boid_velocities = []
-    for boid in flock:
-        boid_vx, boid_vy = boid[2], boid[3]
+    for index in nb.prange(flock_length):
+        boid_vx, boid_vy = flock[index][2], flock[index][3]
         if separation_active or alignment_active or cohesion_active or horizontal_wall_active or vertical_wall_active:
             close_dx, close_dy = 0, 0
             xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
             xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
-            boid_x, boid_y = boid[0], boid[1]
+            boid_x, boid_y = flock[index][0], flock[index][1]
             for other in flock:
-                if other != boid:
-                    boid_distance = np.sqrt(((boid[0] - other[0]) ** 2) + ((boid[1] - other[1]) ** 2))
+                if other != flock[index]:
+                    boid_distance = np.sqrt(((flock[index][0] - other[0]) ** 2) + ((flock[index][1] - other[1]) ** 2))
                     other_x, other_y = other[0], other[1]
                     other_vx, other_vy = other[2], other[3]
                     if separation_active and boid_distance < avoid_range:
