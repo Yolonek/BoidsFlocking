@@ -11,8 +11,8 @@ from time import time
 def main():
     running = True
     pygame.init()
-    WIDTH, HEIGHT = 1900, 1000
-    window = pygame.display.set_mode((WIDTH, HEIGHT))
+    WIDTH, HEIGHT = 1920, 1080
+    window = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
     clock = pygame.time.Clock()
     fps = 30
     dt = 1 / fps
@@ -27,12 +27,12 @@ def main():
     horizontal_cyclic_boundary = False
     vertical_cyclic_boundary = True
     separation_active = True
-    alignment_active = True
+    alignment_active = False
     cohesion_active = True
     horizontal_wall_active = True
     vertical_wall_active = True
 
-    number_of_bodies = 1000
+    number_of_bodies = 1300
     flock = Flock(number_of_bodies, space,
                   space_coordinates=(WIDTH, HEIGHT),
                   boid_size=2,
@@ -43,8 +43,8 @@ def main():
                   avoid_factor=2,
                   align_range=100,
                   align_factor=0.08,
-                  cohesion_range=200,
-                  cohesion_factor=0.5,
+                  cohesion_range=50,# 200
+                  cohesion_factor=0.005, # 0.5
                   turn_margin=80,
                   turn_factor=20)
 

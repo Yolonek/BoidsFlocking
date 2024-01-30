@@ -2,6 +2,7 @@ import pymunk
 import pygame
 import numpy as np
 import numba as nb
+import numpy as np
 from pymunk import Vec2d
 from scipy.spatial import distance
 from UserInterface import BoidFlockingParameters
@@ -29,6 +30,7 @@ class Boid:
         self.body.position = position
         self.body.angle = angle
         self.shape = pymunk.Poly(self.body, triangle_vertices)
+        self.shape.color = (0, np.random.randint(100, 200), 255, 255)
 
     def change_boid(self, position: tuple[int, int], angle: float, speed_active: bool):
         self.body.position = position
@@ -325,4 +327,5 @@ def update_boid_velocity_numba(flock, width, height, separation_active, alignmen
 
 
 if __name__ == '__main__':
-    pass
+    a = np.random.randint(200, 255)
+    print(a, type(a))
