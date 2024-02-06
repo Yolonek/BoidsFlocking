@@ -12,7 +12,7 @@ def main():
     running = True
     pygame.init()
     WIDTH, HEIGHT = 1920, 1080
-    window = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+    window = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
     fps = 30
     dt = 1 / fps
@@ -32,7 +32,7 @@ def main():
     horizontal_wall_active = True
     vertical_wall_active = True
 
-    number_of_bodies = 1300
+    number_of_bodies = 1300 #0.034
     flock = Flock(number_of_bodies, space,
                   space_coordinates=(WIDTH, HEIGHT),
                   boid_size=2,

@@ -2,7 +2,6 @@ import pymunk
 import pygame
 import numpy as np
 import numba as nb
-import numpy as np
 from pymunk import Vec2d
 from scipy.spatial import distance
 from UserInterface import BoidFlockingParameters
@@ -139,9 +138,8 @@ class Flock:
     def convert_boid_to_tuples(self):
         return [(*boid.body.position, *boid.body.velocity) for boid in self.boids]
 
-    # def convert_tuples_to_boids(self, velocities):
-    #     for boid in self.boids:
-    #         boid.body.
+    def convert_boid_to_arrays(self):
+        pass
 
     def accelerate_boids(self):
         for boid in self.boids:
@@ -237,7 +235,7 @@ class Flock:
                                         vertical_wall_active: bool,
                                         horizontal_wall_active: bool):
         boid_coordinates = self.convert_boid_to_tuples()
-        boid_velocities = update_boid_velocity_numba(boid_coordinates, self.WIDTH, self.HEIGHT,
+        boid_velocities = update_boid_velocity_numba_with_parallelization(boid_coordinates, self.WIDTH, self.HEIGHT,
                                                      separation_active, alignment_active, cohesion_active,
                                                      self.avoid_range, self.avoid_factor,
                                                      self.align_range, self.align_factor,
@@ -280,7 +278,8 @@ def update_boid_velocity_numba(flock, width, height, separation_active, alignmen
             xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
             xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
             boid_x, boid_y = flock[index][0], flock[index][1]
-            for other in flock:
+            for other_index in nb.prange(flock_length):
+                other = flock[other_index]
                 if other != flock[index]:
                     boid_distance = np.sqrt(((flock[index][0] - other[0]) ** 2) + ((flock[index][1] - other[1]) ** 2))
                     other_x, other_y = other[0], other[1]
@@ -326,6 +325,81 @@ def update_boid_velocity_numba(flock, width, height, separation_active, alignmen
     return boid_velocities
 
 
+@nb.njit()
+def update_boid_velocity_numba_with_parallelization(flock, width, height, separation_active, alignment_active, cohesion_active,
+                               avoid_range, avoid_factor, align_range, align_factor, cohesion_range, cohesion_factor,
+                               horizontal_wall_active, vertical_wall_active, turn_margin, turn_factor):
+    flock_length = len(flock)
+    boid_velocities = []
+    for index in nb.prange(flock_length):
+        boid_x, boid_y = flock[index][0], flock[index][1]
+        boid_vx, boid_vy = flock[index][2], flock[index][3]
+        if separation_active or alignment_active or cohesion_active or horizontal_wall_active or vertical_wall_active:
+            close_dx, close_dy, xvel_avg, yvel_avg, xpos_avg, ypos_avg = update_boid_velocity_parallel(flock, flock_length, flock[index], separation_active, avoid_range,
+                                          alignment_active, align_range, cohesion_active, cohesion_range)
+            separation_vx, separation_vy = 0, 0
+            if separation_active:
+                separation_vx = close_dx * avoid_factor
+                separation_vy = close_dy * avoid_factor
+            alignment_vx, alignment_vy = 0, 0
+            if alignment_active:
+                alignment_vx = (xvel_avg - boid_vx) * align_factor
+                alignment_vy = (yvel_avg - boid_vy) * align_factor
+            cohesion_vx, cohesion_vy = 0, 0
+            if cohesion_active:
+                cohesion_vx = (xpos_avg - boid_x) * cohesion_factor
+                cohesion_vy = (ypos_avg - boid_y) * cohesion_factor
+            wall_vx = 0
+            if horizontal_wall_active:
+                if boid_x < turn_margin:
+                    wall_vx = turn_factor
+                elif boid_x > width - turn_margin:
+                    wall_vx = -turn_factor
+            wall_vy = 0
+            if vertical_wall_active:
+                if boid_y < turn_margin:
+                    wall_vy = turn_factor
+                elif boid_y > height - turn_margin:
+                    wall_vy = -turn_factor
+            boid_vx += separation_vx + alignment_vx + cohesion_vx + wall_vx
+            boid_vy += separation_vy + alignment_vy + cohesion_vy + wall_vy
+        boid_velocities.append((boid_vx, boid_vy))
+    return boid_velocities
+
+
+@nb.njit(parallel=True)
+def update_boid_velocity_parallel(flock, flock_length, boid, separation_active, avoid_range,
+                                  alignment_active, align_range, cohesion_active, cohesion_range):
+    close_dx, close_dy = 0, 0
+    xvel_avg, yvel_avg, neighboring_boids_align = 0, 0, 0
+    xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
+    boid_x, boid_y = boid[0], boid[1]
+    for index in nb.prange(flock_length):
+        other = flock[index]
+        if other != boid:
+            other_x, other_y = other[0], other[1]
+            other_vx, other_vy = other[2], other[3]
+            boid_distance = np.sqrt(((boid_x - other_x) ** 2) + ((boid_y - other_y) ** 2))
+            if separation_active and boid_distance < avoid_range:
+                close_dx += boid_x - other_x
+                close_dy += boid_y - other_y
+            if alignment_active and boid_distance < align_range:
+                xvel_avg += other_vx
+                yvel_avg += other_vy
+                neighboring_boids_align += 1
+            if cohesion_active and boid_distance < cohesion_range:
+                xpos_avg += other_x
+                ypos_avg += other_y
+                neighboring_boids_cohesion += 1
+    if neighboring_boids_align > 0:
+        xvel_avg /= neighboring_boids_align
+        yvel_avg /= neighboring_boids_align
+    if neighboring_boids_cohesion > 0:
+        xpos_avg /= neighboring_boids_cohesion
+        ypos_avg /= neighboring_boids_cohesion
+    return close_dx, close_dy, xvel_avg, yvel_avg, xpos_avg, ypos_avg
+
+
+
 if __name__ == '__main__':
-    a = np.random.randint(200, 255)
-    print(a, type(a))
+    print(update_boid_velocity_parallel((1, 2, 3, 4)))
