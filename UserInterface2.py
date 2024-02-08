@@ -72,10 +72,20 @@ class UserInterface:
         self.speed_row, self.speed_box = None, None
         self.avoid_range, self.avoid_factor = None, None
         self.avoid_row, self.avoid_box = None, None
+        self.align_range, self.align_factor = None, None
+        self.align_row, self.align_box = None, None
+        self.cohesion_range, self.cohesion_factor = None, None
+        self.cohesion_row, self.cohesion_box = None, None
+        self.boundary_margin, self.boundary_factor = None, None
+        self.boundary_row, self.boundary_box = None, None
         self.main_box = None
 
         self.create_boid_widgets()
         self.create_speed_widgets()
+        self.create_avoid_widgets()
+        self.create_align_widgets()
+        self.create_cohesion_widgets()
+        self.create_boundary_widgets()
         self.create_main_box()
         self.create_updater()
 
@@ -120,11 +130,47 @@ class UserInterface:
         self.avoid_factor.max_length = 5
         self.avoid_factor.set_only_numbers()
         self.avoid_factor.on_validation = partial(self.input_validation, self.avoid_factor)
-        self.avoid_row = tp.Group([tp.Text('RANGE'), self.avoid_range, tp.Text('FACTOR'), self.avoid_factor])
+        self.avoid_row = tp.Group([tp.Text('RANGE'), self.avoid_range, tp.Text('FACTOR'), self.avoid_factor], 'h')
         self.avoid_box = tp.TitleBox('Separation', children=[self.avoid_row])
 
+    def create_align_widgets(self):
+        self.align_range = tp.TextInput("", placeholder=f'{self.parameters.align_range}    ')
+        self.align_range.max_length = 3
+        self.align_range.set_only_integers()
+        self.align_range.on_validation = partial(self.input_validation, self.align_range)
+        self.align_factor = tp.TextInput("", placeholder=f'{self.parameters.align_factor}    ')
+        self.align_factor.max_length = 5
+        self.align_factor.set_only_numbers()
+        self.align_factor.on_validation = partial(self.input_validation, self.align_factor)
+        self.align_row = tp.Group([tp.Text('RANGE'), self.align_range, tp.Text('FACTOR'), self.align_factor], 'h')
+        self.align_box = tp.TitleBox('Alignment', children=[self.align_row])
+
+    def create_cohesion_widgets(self):
+        self.cohesion_range = tp.TextInput("", placeholder=f'{self.parameters.cohesion_range}    ')
+        self.cohesion_range.max_length = 3
+        self.cohesion_range.set_only_integers()
+        self.cohesion_range.on_validation = partial(self.input_validation, self.cohesion_range)
+        self.cohesion_factor = tp.TextInput("", placeholder=f'{self.parameters.cohesion_factor}    ')
+        self.cohesion_factor.max_length = 5
+        self.cohesion_factor.set_only_numbers()
+        self.cohesion_factor.on_validation = partial(self.input_validation, self.cohesion_factor)
+        self.cohesion_row = tp.Group([tp.Text('RANGE'), self.cohesion_range, tp.Text('FACTOR'), self.cohesion_factor])
+        self.cohesion_box = tp.TitleBox('Cohesion', children=[self.cohesion_row])
+
+    def create_boundary_widgets(self):
+        self.boundary_margin = tp.TextInput("", placeholder=f'{self.parameters.boundary_margin}    ')
+        self.boundary_margin.max_length = 3
+        self.boundary_margin.set_only_integers()
+        self.boundary_margin.on_validation = partial(self.input_validation, self.boundary_margin)
+        self.boundary_factor = tp.TextInput("", placeholder=f'{self.parameters.cohesion_factor}    ')
+        self.boundary_factor.max_length = 3
+        self.boundary_factor.set_only_integers()
+        self.boundary_factor.on_validation = partial(self.input_validation, self.boundary_factor)
+        self.boundary_row = tp.Group([tp.Text('MARGIN'), self.boundary_margin, tp.Text('FACTOR'), self.boundary_factor])
+        self.boundary_box = tp.TitleBox('BOUNDARY', children=[self.boundary_row])
+
     def create_main_box(self):
-        children = [self.boid_box, self.speed_box]
+        children = [self.boid_box, self.speed_box, self.avoid_box, self.align_box, self.cohesion_box, self.boundary_row]
         self.main_box = tp.TitleBox('Parameters', children=children)
         self.main_box.set_topleft(self.WIDTH - self.main_box.rect.size[0] - self.margin, self.margin)
 
@@ -145,8 +191,32 @@ class UserInterface:
         elif changed_widget == self.speed_max:
             widget_value = check_allowed_values(widget_value, 1, 10)
             self.parameters.speed_max = widget_value
+        elif changed_widget == self.avoid_range:
+            widget_value = check_allowed_values(widget_value, 1, 500)
+            self.parameters.avoid_range = widget_value
+        elif changed_widget == self.avoid_factor:
+            widget_value = check_allowed_values(widget_value, 0.001, 100)
+            self.parameters.avoid_factor = widget_value
+        elif changed_widget == self.align_range:
+            widget_value = check_allowed_values(widget_value, 1, 500)
+            self.parameters.align_range = widget_value
+        elif changed_widget == self.align_factor:
+            widget_value = check_allowed_values(widget_value, 0.001, 100)
+            self.parameters.align_factor = widget_value
+        elif changed_widget == self.cohesion_range:
+            widget_value = check_allowed_values(widget_value, 1, 500)
+            self.parameters.cohesion_range = widget_value
+        elif changed_widget == self.cohesion_factor:
+            widget_value = check_allowed_values(widget_value, 0.001, 100)
+            self.parameters.cohesion_factor = widget_value
+        elif changed_widget == self.boundary_margin:
+            widget_value = check_allowed_values(widget_value, 1, 999)
+            self.parameters.boundary_margin = widget_value
+        elif changed_widget == self.boundary_factor:
+            widget_value = check_allowed_values(widget_value, 1, 100)
+            self.parameters.boundary_factor = widget_value
         self.parameters.values_changed = True
-        print(self.parameters)
+        # print(self.parameters)
 
     def create_updater(self):
         self.updater = self.main_box.get_updater()

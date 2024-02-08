@@ -25,10 +25,10 @@ def main():
 
     check_boundaries = True
     horizontal_cyclic_boundary = False
-    vertical_cyclic_boundary = True
-    separation_active = True
+    vertical_cyclic_boundary = False
+    separation_active = False
     alignment_active = False
-    cohesion_active = True
+    cohesion_active = False
     horizontal_wall_active = True
     vertical_wall_active = True
 
