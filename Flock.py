@@ -152,12 +152,14 @@ class Flock:
             self.delete_boid()
 
     def update_number_of_boids(self):
+        self.stop_boids()
         current_boids = len(self.boids)
         if current_boids != self.number_of_boids:
             if current_boids > self.number_of_boids:
                 self.delete_boids()
             else:
                 self.create_boids()
+        self.accelerate_boids()
 
     def reset_boids(self):
         for boid in self.boids:

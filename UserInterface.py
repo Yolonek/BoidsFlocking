@@ -6,19 +6,19 @@ from functools import partial
 
 @dataclass
 class BoidFlockingParameters:
-    boid_number: int = 100
+    boid_number: int = 50
     boid_size: int = 5
     speed_min: int = 1
-    speed_max: int = 3
-    speed_scale: int = 100
-    avoid_range: int = 50
-    avoid_factor: float = 0.4
+    speed_max: int = 2
+    speed_scale: int = 200
+    avoid_range: int = 15
+    avoid_factor: float = 2
     align_range: int = 100
-    align_factor: float = 0.2
-    cohesion_range: int = 100
-    cohesion_factor: float = 0.5
-    boundary_margin: int = 50
-    boundary_factor: int = 10
+    align_factor: float = 0.08
+    cohesion_range: int = 50
+    cohesion_factor: float = 0.05
+    boundary_margin: int = 80
+    boundary_factor: int = 20
     values_changed: bool = False
 
 @dataclass
@@ -35,7 +35,10 @@ class ToggleParameters:
 
 
 def check_allowed_values(value, value_min, value_max):
-    value = 0 if value in ['', '-'] else int(value)
+    if '.' in value:
+        value = 0 if value in ['', '-'] else float(value)
+    else:
+        value = 0 if value in ['', '-'] else int(value)
     if value >= value_max:
         return value_max
     elif value <= value_min:
@@ -261,14 +264,13 @@ class ToggleWindow():
                                f'[M] ACTIVATE MENU\n'
                                f'[R] RESET BOIDS\n'
                                f'[F] PRINT FRAMERATE\n'
-                               f'[SPACE] PAUSE\n '
+                               f'[SPACE] PAUSE\n'
                                f'[ESC] QUIT')
 
     def create_widget(self):
-        self.text = tp.Text('ta')
-        # self.text = tp.Text(self.displayed_text, font_size=15)
+        self.text = tp.Text(self.displayed_text, font_size=15)
         self.text_box = tp.TitleBox('Toggles', children=[self.text])
-        # self.text_box.set_topleft(self.margin, self.margin)
+        self.text_box.set_topleft(self.margin, self.margin)
 
     def update_text(self):
         self.generate_text()

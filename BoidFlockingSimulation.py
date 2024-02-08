@@ -4,7 +4,7 @@ import pymunk
 import pymunk.pygame_util
 from Flock import Flock
 from UserInterface import UserInterface, ToggleWindow
-# import thorpy as tp
+import thorpy as tp
 from time import time
 
 
@@ -18,29 +18,30 @@ def main():
     dt = 1 / fps
 
     space = pymunk.Space()
-    toggles = ToggleWindow(window, WIDTH, HEIGHT, margin=50)
-    toggle_parameters = toggles.get_parameters()
+    # toggles = ToggleWindow(window, WIDTH, HEIGHT, margin=50)
+    # toggle_parameters = toggles.get_parameters()
     user_interface = UserInterface(window, WIDTH, HEIGHT, margin=50)
     simulation_parameters = user_interface.get_parameters()
 
-    # check_boundaries = True
-    # horizontal_cyclic_boundary = False
-    # vertical_cyclic_boundary = False
-    # separation_active = False
-    # alignment_active = False
-    # cohesion_active = False
-    # horizontal_wall_active = True
-    # vertical_wall_active = True
+    check_boundaries = True
+    horizontal_cyclic_boundary = False
+    vertical_cyclic_boundary = False
+    separation_active = False
+    alignment_active = False
+    cohesion_active = False
+    horizontal_wall_active = True
+    vertical_wall_active = True
+    use_numba = False
 
-    check_boundaries = toggle_parameters.check_boundaries
-    horizontal_cyclic_boundary = toggle_parameters.horizontal_cyclic_boundary
-    vertical_cyclic_boundary = toggle_parameters.vertical_cyclic_boundary
-    separation_active = toggle_parameters.separation_active
-    alignment_active = toggle_parameters.alignment_active
-    cohesion_active = toggle_parameters.cohesion_active
-    horizontal_wall_active = toggle_parameters.horizontal_wall_active
-    vertical_wall_active = toggle_parameters.vertical_wall_active
-    use_numba = toggle_parameters.numba_active
+    # check_boundaries = toggle_parameters.check_boundaries
+    # horizontal_cyclic_boundary = toggle_parameters.horizontal_cyclic_boundary
+    # vertical_cyclic_boundary = toggle_parameters.vertical_cyclic_boundary
+    # separation_active = toggle_parameters.separation_active
+    # alignment_active = toggle_parameters.alignment_active
+    # cohesion_active = toggle_parameters.cohesion_active
+    # horizontal_wall_active = toggle_parameters.horizontal_wall_active
+    # vertical_wall_active = toggle_parameters.vertical_wall_active
+    # use_numba = toggle_parameters.numba_active
 
     flock = Flock(
         simulation_parameters.boid_number, space,
@@ -88,10 +89,10 @@ def main():
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_m:
                 if user_interface.get_menu_state():
                     user_interface.deactivate_menu()
-                    toggles.deactivate()
+                    # toggles.deactivate()
                 else:
                     user_interface.activate_menu()
-                    toggles.activate()
+                    # toggles.activate()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 if flock.speed_active:
                     simulation_parameters.speed_active = False
@@ -130,8 +131,8 @@ def main():
                 print(f'use numba {use_numba}')
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_f:
                 print(f'frame time: {fps_time:.6}')
-            if event.type == pygame.KEYDOWN:
-                toggles.update_text()
+            # if event.type == pygame.KEYDOWN:
+                # toggles.update_text()
         if user_interface.get_parameters().values_changed:
             flock.update_parameters(simulation_parameters)
             simulation_parameters.values_changed = False
@@ -164,7 +165,7 @@ def main():
         window.fill((11, 11, 11))
         space.debug_draw(draw_options)
         user_interface.update(events, mouse_rel)
-        toggles.update(events, mouse_rel)
+        # toggles.update(events, mouse_rel)
         pygame.display.update()
         space.step(dt)
         clock.tick(fps)
