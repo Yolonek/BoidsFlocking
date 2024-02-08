@@ -3,7 +3,7 @@ import pygame
 import pymunk
 import pymunk.pygame_util
 from Flock import Flock
-from UserInterface import UserInterface
+from UserInterface2 import UserInterface
 import thorpy as tp
 from time import time
 
@@ -12,7 +12,7 @@ def main():
     running = True
     pygame.init()
     WIDTH, HEIGHT = 1920, 1080
-    window = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+    window = pygame.display.set_mode((WIDTH, HEIGHT))
     clock = pygame.time.Clock()
     fps = 30
     dt = 1 / fps
@@ -32,21 +32,37 @@ def main():
     horizontal_wall_active = True
     vertical_wall_active = True
 
-    number_of_bodies = 1300
-    flock = Flock(number_of_bodies, space,
-                  space_coordinates=(WIDTH, HEIGHT),
-                  boid_size=2,
-                  speed_scale=200,
-                  speed_range=(1, 2),
-                  speed_active=False,
-                  avoid_range=15,
-                  avoid_factor=2,
-                  align_range=100,
-                  align_factor=0.08,
-                  cohesion_range=50,# 200
-                  cohesion_factor=0.005, # 0.5
-                  turn_margin=80,
-                  turn_factor=20)
+    flock = Flock(
+        simulation_parameters.boid_number, space,
+        space_coordinates=(WIDTH, HEIGHT),
+        boid_size=simulation_parameters.boid_size,
+        speed_scale=simulation_parameters.speed_scale,
+        speed_range=(simulation_parameters.speed_min, simulation_parameters.speed_max),
+        speed_active=False,
+        avoid_range=simulation_parameters.avoid_range,
+        avoid_factor=simulation_parameters.avoid_factor,
+        align_range=simulation_parameters.align_range,
+        align_factor=simulation_parameters.align_factor,
+        cohesion_range=simulation_parameters.cohesion_range,
+        cohesion_factor=simulation_parameters.cohesion_factor,
+        turn_margin=simulation_parameters.boundary_margin,
+        turn_factor=simulation_parameters.boundary_factor
+    )
+    # number_of_bodies = 1300
+    # flock = Flock(number_of_bodies, space,
+    #               space_coordinates=(WIDTH, HEIGHT),
+    #               boid_size=2,
+    #               speed_scale=200,
+    #               speed_range=(1, 2),
+    #               speed_active=False,
+    #               avoid_range=15,
+    #               avoid_factor=2,
+    #               align_range=100,
+    #               align_factor=0.08,
+    #               cohesion_range=50,# 200
+    #               cohesion_factor=0.05, # 0.5
+    #               turn_margin=80,
+    #               turn_factor=20)
 
     draw_options = pymunk.pygame_util.DrawOptions(window)
 
@@ -66,10 +82,10 @@ def main():
                     user_interface.activate_menu()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 if flock.speed_active:
-                    # simulation_parameters.speed_active = False
+                    simulation_parameters.speed_active = False
                     flock.stop_boids()
                 else:
-                    # simulation_parameters.speed_active = True
+                    simulation_parameters.speed_active = True
                     flock.accelerate_boids()
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_1:
                 check_boundaries = not check_boundaries
@@ -102,10 +118,16 @@ def main():
                 print(f'use numba {use_numba}')
             elif event.type == pygame.KEYDOWN and event.key == pygame.K_f:
                 print(f'frame time: {fps_time:.6}')
-
-        # if simulation_parameters != user_interface.get_parameters():
-        #     simulation_parameters = user_interface.get_parameters()
-        #     flock.update_parameters(simulation_parameters)
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                print(user_interface.get_parameters())
+                print(simulation_parameters)
+                print(flock.number_of_boids)
+        if user_interface.get_parameters().values_changed:
+            # print(simulation_parameters)
+            # simulation_parameters = user_interface.get_parameters()
+            # print(simulation_parameters)
+            flock.update_parameters(simulation_parameters)
+            simulation_parameters.values_changed = False
         if flock.speed_active:
             start = time()
             if use_numba:

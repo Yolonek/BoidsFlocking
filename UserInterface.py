@@ -1,3 +1,4 @@
+import pygame
 import thorpy as tp
 from dataclasses import dataclass
 
@@ -162,26 +163,27 @@ class UserInterface:
         boundary_widgets = self.row_boundary.get_children()
         cyclic_widgets = self.row_cyclic.get_children()
         wall_widgets = self.row_wall.get_children()
-        new_parameters = BoidFlockingParameters(boid=self.row_boid.get_value(),
-                                                speed_active=speed_widgets[0].get_value(),
-                                                speed_range=speed_widgets[1].get_value(),
-                                                speed_scale=speed_widgets[2].get_value(),
-                                                avoid_active=avoid_widgets[0].get_value(),
-                                                avoid_range=avoid_widgets[1].get_value(),
-                                                avoid_factor=avoid_widgets[2].get_value(),
-                                                align_active=align_widgets[0].get_value(),
-                                                align_range=align_widgets[1].get_value(),
-                                                align_factor=align_widgets[2].get_value(),
-                                                cohesion_active=cohesion_widgets[0].get_value(),
-                                                cohesion_range=cohesion_widgets[1].get_value(),
-                                                cohesion_factor=cohesion_widgets[2].get_value(),
-                                                boundary_active=boundary_widgets[0].get_value(),
-                                                boundary_margin=boundary_widgets[1].get_value(),
-                                                boundary_factor=boundary_widgets[2].get_value(),
-                                                cyclic_horizontal=cyclic_widgets[0].get_value(),
-                                                cyclic_vertical=cyclic_widgets[1].get_value(),
-                                                wall_horizontal=wall_widgets[0].get_value(),
-                                                wall_vertical=wall_widgets[1].get_value())
+        new_parameters = BoidFlockingParameters(
+            boid=self.row_boid.get_value(),
+            speed_active=speed_widgets[0].get_value(),
+            speed_range=speed_widgets[1].get_value(),
+            speed_scale=speed_widgets[2].get_value(),
+            avoid_active=avoid_widgets[0].get_value(),
+            avoid_range=avoid_widgets[1].get_value(),
+            avoid_factor=avoid_widgets[2].get_value(),
+            align_active=align_widgets[0].get_value(),
+            align_range=align_widgets[1].get_value(),
+            align_factor=align_widgets[2].get_value(),
+            cohesion_active=cohesion_widgets[0].get_value(),
+            cohesion_range=cohesion_widgets[1].get_value(),
+            cohesion_factor=cohesion_widgets[2].get_value(),
+            boundary_active=boundary_widgets[0].get_value(),
+            boundary_margin=boundary_widgets[1].get_value(),
+            boundary_factor=boundary_widgets[2].get_value(),
+            cyclic_horizontal=cyclic_widgets[0].get_value(),
+            cyclic_vertical=cyclic_widgets[1].get_value(),
+            wall_horizontal=wall_widgets[0].get_value(),
+            wall_vertical=wall_widgets[1].get_value())
         self.parameters = new_parameters
         print(new_parameters)
 
@@ -201,4 +203,39 @@ class UserInterface:
         if self.menu_active:
             self.updater.update(events=events, mouse_rel=mouse_rel)
 
-    # def update
+
+def main():
+    running = True
+    pygame.init()
+    WIDTH, HEIGHT = 1920, 1080
+    window = pygame.display.set_mode((WIDTH, HEIGHT))
+    clock = pygame.time.Clock()
+    fps = 30
+    dt = 1 / fps
+
+    user_interface = UserInterface(window, WIDTH, HEIGHT, margin=50)
+    simulation_parameters = user_interface.get_parameters()
+    print(simulation_parameters)
+
+    while running:
+        events = pygame.event.get()
+        for event in events:
+            if event.type == pygame.QUIT:
+                running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_m:
+                if user_interface.get_menu_state():
+                    user_interface.deactivate_menu()
+                else:
+                    user_interface.activate_menu()
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+                print(user_interface.get_parameters())
+        window.fill((0, 0, 0))
+        user_interface.update(events, pygame.mouse.get_rel())
+        pygame.display.update()
+        clock.tick(fps)
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()

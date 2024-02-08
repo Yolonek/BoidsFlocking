@@ -1,11 +1,10 @@
 import pymunk
-import pygame
 import numpy as np
 import numba as nb
-import numpy as np
+from time import sleep
 from pymunk import Vec2d
 from scipy.spatial import distance
-from UserInterface import BoidFlockingParameters
+from UserInterface2 import BoidFlockingParameters
 from numba.core.errors import NumbaPendingDeprecationWarning
 import warnings
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
@@ -37,6 +36,9 @@ class Boid:
         self.body.angle = angle
         if speed_active:
             self.accelerate()
+
+    def change_speed(self, speed: int):
+        self.speed = speed
 
     def change_velocity(self, vx: float, vy: float, vmax: int, vmin: int):
         self.body.angle = np.arctan2(-vx, vy) + np.pi / 2
@@ -119,15 +121,43 @@ class Flock:
         self.turn_factor = turn_factor
         self.create_boids()
 
+    def add_boid(self, x_pos, y_pos):
+        boid = Boid((x_pos, y_pos),
+                    np.random.random() * 2 * np.pi,
+                    scale=self.boid_scale,
+                    speed=self.speed_scale)
+        self.space.add(boid.body, boid.shape)
+        self.boids.append(boid)
+
+    def change_boids_speed(self, speed: int):
+        self.speed_scale = speed
+        for boid in self.boids:
+            boid.change_speed(speed)
+
+    def change_boids_speed_range(self, speed_min: int, speed_max: int):
+        self.speed_min, self.speed_max = Vec2d(speed_min, speed_max) * self.speed_scale
+
     def create_boids(self):
-        for _ in range(self.number_of_boids):
-            boid = Boid((np.random.randint(self.WIDTH),
-                         np.random.randint(self.HEIGHT)),
-                        np.random.random() * 2 * np.pi,
-                        scale=self.boid_scale,
-                        speed=self.speed_scale)
-            self.space.add(boid.body, boid.shape)
-            self.boids.append(boid)
+        while len(self.boids) < self.number_of_boids:
+            self.add_boid(np.random.randint(self.WIDTH),
+                          np.random.randint(self.HEIGHT))
+
+    def delete_boid(self):
+        self.space.remove(self.boids[-1].body)
+        self.space.remove(self.boids[-1].shape)
+        self.boids.pop()
+
+    def delete_boids(self):
+        while len(self.boids) > self.number_of_boids:
+            self.delete_boid()
+
+    def update_number_of_boids(self):
+        current_boids = len(self.boids)
+        if current_boids != self.number_of_boids:
+            if current_boids > self.number_of_boids:
+                self.delete_boids()
+            else:
+                self.create_boids()
 
     def reset_boids(self):
         for boid in self.boids:
@@ -136,12 +166,19 @@ class Flock:
                              np.random.random() * 2 * np.pi,
                              self.speed_active)
 
+    def change_boid_size(self, new_size):
+        if new_size != self.boid_scale:
+            self.stop_boids()
+            self.boid_scale = new_size
+            for _ in range(self.number_of_boids):
+                self.delete_boid()
+            for _ in range(self.number_of_boids):
+                self.add_boid(np.random.randint(self.WIDTH),
+                              np.random.randint(self.HEIGHT))
+            self.accelerate_boids()
+
     def convert_boid_to_tuples(self):
         return [(*boid.body.position, *boid.body.velocity) for boid in self.boids]
-
-    # def convert_tuples_to_boids(self, velocities):
-    #     for boid in self.boids:
-    #         boid.body.
 
     def accelerate_boids(self):
         for boid in self.boids:
@@ -253,10 +290,11 @@ class Flock:
             boid.change_velocity(velocity_vx, velocity_vy, self.speed_max, self.speed_min)
 
     def update_parameters(self, parameters: BoidFlockingParameters):
-        self.boid_scale = parameters.boid
-        self.speed_active = parameters.speed_active
-        self.speed_scale = parameters.speed_scale
-        self.speed_min, self.speed_max = Vec2d(1, parameters.speed_range) * self.speed_scale
+        self.number_of_boids = parameters.boid_number
+        self.update_number_of_boids()
+        self.change_boid_size(parameters.boid_size)
+        self.change_boids_speed(parameters.speed_scale)
+        self.change_boids_speed_range(parameters.speed_min, parameters.speed_max)
         self.avoid_range = parameters.avoid_range
         self.avoid_factor = parameters.avoid_factor
         self.align_range = parameters.align_range
