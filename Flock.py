@@ -4,7 +4,7 @@ import numba as nb
 from time import sleep
 from pymunk import Vec2d
 from scipy.spatial import distance
-from UserInterface2 import BoidFlockingParameters
+from UserInterface import BoidFlockingParameters
 from numba.core.errors import NumbaPendingDeprecationWarning
 import warnings
 warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
