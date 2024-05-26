@@ -11,8 +11,10 @@ from time import time
 def main():
     running = True
     pygame.init()
-    WIDTH, HEIGHT = 1920, 1080
-    window = pygame.display.set_mode((WIDTH, HEIGHT))
+    WIDTH, HEIGHT = (c := 10) * 192, c * 108
+    # WIDTH, HEIGHT = 800, 900
+    # window = pygame.display.set_mode((WIDTH, HEIGHT))
+    window = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
     clock = pygame.time.Clock()
     fps = 30
     dt = 1 / fps

@@ -20,7 +20,7 @@ class Boid:
         self.create(position, angle, scale)
 
     def create(self, position: tuple[int, int], angle: float, scale: float):
-        triangle_vertices = [
+        triangle_points = [
             (0, 1 * scale),
             (0, -1 * scale),
             (3 * scale, 0)
@@ -28,12 +28,13 @@ class Boid:
         self.body = pymunk.Body(body_type=pymunk.Body.KINEMATIC)
         self.body.position = position
         self.body.angle = angle
-        self.shape = pymunk.Poly(self.body, triangle_vertices)
+        self.shape = pymunk.Poly(self.body, triangle_points)
         self.shape.color = (0, np.random.randint(100, 200), 255, 255)
 
-    def change_boid(self, position: tuple[int, int], angle: float, speed_active: bool):
+    def change_boid(self, position: tuple[int, int], angle: float, speed: int, speed_active: bool):
         self.body.position = position
         self.body.angle = angle
+        self.speed = speed
         if speed_active:
             self.accelerate()
 
@@ -125,7 +126,7 @@ class Flock:
         boid = Boid((x_pos, y_pos),
                     np.random.random() * 2 * np.pi,
                     scale=self.boid_scale,
-                    speed=self.speed_scale)
+                    speed=np.random.randint(self.speed_min, self.speed_max))
         self.space.add(boid.body, boid.shape)
         self.boids.append(boid)
 
@@ -166,6 +167,7 @@ class Flock:
             boid.change_boid((np.random.randint(self.WIDTH),
                               np.random.randint(self.HEIGHT)),
                              np.random.random() * 2 * np.pi,
+                             np.random.randint(self.speed_min, self.speed_max),
                              self.speed_active)
 
     def change_boid_size(self, new_size):
@@ -213,11 +215,10 @@ class Flock:
                 xpos_avg, ypos_avg, neighboring_boids_cohesion = 0, 0, 0
                 boid_x, boid_y = boid.body.position
                 for other in self.boids:
-                    if other != boid:
+                    if other is not boid:
                         other_x, other_y = other.body.position
                         boid_distance = distance.euclidean(boid.body.position, other.body.position)
                         if separation_active and boid_distance < self.avoid_range:
-                            # boid_x, boid_y = boid.body.position
                             close_dx += boid_x - other_x
                             close_dy += boid_y - other_y
 

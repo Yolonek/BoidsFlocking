@@ -10,7 +10,7 @@ class BoidFlockingParameters:
     boid_size: int = 5
     speed_min: int = 1
     speed_max: int = 2
-    speed_scale: int = 200
+    speed_scale: int = 150
     avoid_range: int = 15
     avoid_factor: float = 2
     align_range: int = 100
