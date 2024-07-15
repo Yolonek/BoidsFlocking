@@ -1,0 +1,6 @@
+pymunk~=6.6.0
+pygame~=2.5.2
+numpy~=1.26.4
+numba~=0.58.1
+scipy~=1.11.3
+thorpy~=2.1.6
